@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>برنامج تحليل الأخطاء الصوتية</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f5f7fb;color:#222}
+  .container{max-width:1150px;margin:30px auto;padding:0 18px}
+  .header{background:white;border-radius:18px;padding:24px;box-shadow:0 5px 20px #00000010;margin-bottom:18px}
+  h1{margin:0 0 8px;font-size:28px}
+  .subtitle{color:#666}
+  textarea{width:100%;min-height:105px;border:2px solid #ddd;border-radius:12px;padding:15px;font-size:21px;resize:vertical;outline:none}
+  textarea:focus{border-color:#777}
+  button{border:0;border-radius:10px;padding:11px 18px;font-size:16px;cursor:pointer}
+  .primary{background:#222;color:white;margin-top:12px}
+  .primary:hover{opacity:.88}
+  .section{background:white;border-radius:18px;padding:22px;box-shadow:0 5px 20px #00000010;margin-bottom:18px}
+  .section h2{margin-top:0}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 18px;color:#555}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .dot{width:16px;height:16px;border-radius:50%;display:inline-block}
+  .red{background:#ef4444}.orange{background:#f97316}.yellow{background:#facc15}.green{background:#22c55e}
+  .letters{display:flex;flex-wrap:wrap;gap:8px;direction:rtl}
+  .letter{min-width:48px;height:55px;border:3px solid transparent;border-radius:12px;background:white;font-size:27px;font-weight:bold;cursor:pointer;box-shadow:0 3px 10px #00000012;transition:.15s}
+  .letter:hover{transform:translateY(-3px)}
+  .letter.red-border{border-color:#ef4444;color:#b91c1c}
+  .letter.orange-border{border-color:#f97316;color:#c2410c}
+  .letter.yellow-border{border-color:#eab308;color:#a16207}
+  .letter.space{border:0;box-shadow:none;cursor:default;background:transparent;min-width:18px}
+  .scorebox{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .score{font-size:42px;font-weight:bold}
+  .bar{height:18px;background:#eee;border-radius:20px;overflow:hidden;flex:1;min-width:220px;direction:rtl}
+  .fill{height:100%;width:0%;transition:width .4s;display:block}
+  .difficulty{display:none}
+  .phenomena-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .phenomenon{border:2px solid #ddd;border-radius:14px;padding:18px;background:#fff}
+  .red-card{border-color:#ef4444}.orange-card{border-color:#f97316}
+  .phenomenon-title{font-size:20px;font-weight:bold;margin-bottom:8px}
+  .details-btn{background:#222;color:#fff}
+  .report-stack{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+  .report-card{background:#f8fafc;border-radius:12px;padding:15px;line-height:1.8}
+  .phenomenon-words{font-size:13px;color:#8a8a8a;margin:0 0 16px;line-height:1.7;font-style:italic}
+  .generate-btn{background:#222;color:#fff;margin-top:8px}
+  .hidden{display:none}
+  .note{font-size:13px;color:#777;margin-top:12px}
+  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;opacity:0;visibility:hidden;transition:opacity .2s}
+  .modal-overlay.active{opacity:1;visibility:visible}
+  .modal-content{background:white;border-radius:18px;padding:24px;max-width:800px;width:90%;max-height:80vh;overflow-y:auto;position:relative}
+  .modal-close{position:absolute;top:15px;left:15px;background:#ef4444;color:white;border:0;border-radius:50%;width:32px;height:32px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .modal-close:hover{background:#dc2626}
+  .modal-title{font-size:24px;font-weight:bold;margin-bottom:16px;color:#222}
+  .modal-exercises{line-height:1.8}
+  .modal-exercises ol{padding-right:25px}
+  .modal-exercises li{margin:8px 0}
+  /* ===== لوحة التحكم (Admin) ===== */
+  #loadingNote{padding:14px 18px;background:#fff;border-radius:14px;box-shadow:0 5px 20px #00000010;margin-bottom:18px;color:#555}
+  #dataErrorNote{padding:14px 18px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:14px;margin-bottom:18px}
+  #adminEntry{position:fixed;bottom:14px;left:14px;background:#222;color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;cursor:pointer;opacity:.55;z-index:500}
+  #adminEntry:hover{opacity:1}
+  #adminPanel{position:fixed;inset:0;background:#f5f7fb;z-index:2000;overflow-y:auto;display:none}
+  #adminPanel.active{display:block}
+  .admin-wrap{max-width:1000px;margin:24px auto;padding:0 18px 60px}
+  .admin-topbar{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:16px;padding:16px 20px;box-shadow:0 5px 20px #00000010;margin-bottom:18px}
+  .admin-topbar h2{margin:0}
+  .admin-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 5px 20px #00000010;margin-bottom:18px}
+  .admin-card h3{margin-top:0}
+  .admin-field{margin-bottom:12px}
+  .admin-field label{display:block;font-size:13px;color:#555;margin-bottom:5px;font-weight:bold}
+  .admin-field input,.admin-field select,.admin-field textarea{width:100%;border:2px solid #ddd;border-radius:10px;padding:9px 12px;font-size:15px;font-family:inherit}
+  .admin-field textarea{min-height:70px;resize:vertical}
+  .admin-row{display:flex;gap:10px;flex-wrap:wrap}
+  .admin-row>.admin-field{flex:1;min-width:150px}
+  .ghost-btn{background:#eee;color:#222}
+  .danger-btn{background:#ef4444;color:#fff}
+  .tabbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tabbar button{background:#eee;color:#333}
+  .tabbar button.active{background:#222;color:#fff}
+  .admin-list-item{border:1px solid #e5e5e5;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .admin-list-item .meta{font-size:13px;color:#777;margin-top:3px}
+  .admin-list-item .actions{display:flex;gap:6px;flex-shrink:0}
+  .admin-list-item .actions button{padding:6px 10px;font-size:13px}
+  .admin-msg{border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+  .admin-msg.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+  .admin-msg.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .exercise-line{display:flex;gap:6px;margin-bottom:6px}
+  .exercise-line input{flex:1}
+  .exercise-line button{padding:6px 10px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>برنامج تحليل الأخطاء الصوتية</h1>
+    <div class="subtitle">تحليل النص صوتيًا</div>
+  </div>
+  <div id="loadingNote">⏳ جارٍ تحميل بيانات الحروف والظواهر من قاعدة البيانات...</div>
+  <div id="dataErrorNote" class="hidden">تعذّر تحميل البيانات من قاعدة البيانات المركزية. تأكد من الاتصال بالإنترنت ثم أعد تحميل الصفحة. <button class="ghost-btn" onclick="loadAppData()">إعادة المحاولة</button></div>
+  <div class="section">
+    <h2>أدخل الجملة</h2>
+    <textarea id="sentence" placeholder="اكتب جملة عربية هنا، مثل: ذهب الطالب إلى الجامعة"></textarea>
+    <button class="primary" id="analyzeBtn" onclick="analyzeSentence()" disabled>تحليل الجملة</button>
+  </div>
+  <div id="results" class="hidden">
+    <div class="section">
+      <h2>الحروف وتحليل درجة الصعوبة</h2>
+      <div class="legend">
+        <span><i class="dot red"></i> صعوبة شديدة</span>
+        <span><i class="dot orange"></i> صعوبة متوسطة</span>
+        <span><i class="dot yellow"></i> صعوبة أقل</span>
+      </div>
+      <div id="letters" class="letters"></div>
+      <div class="note">اضغط على أي حرف لعرض التقرير الخاص به.</div>
+    </div>
+    <div class="section">
+      <h2>تقييم النص ككل</h2>
+      <div class="scorebox">
+        <div class="score" id="score">—</div>
+        <div class="bar"><div id="fill" class="fill"></div></div>
+        <div class="difficulty" id="difficulty"></div>
+      </div>
+      <div id="summary" class="note"></div>
+    </div>
+    <div id="letterReportSection" class="section hidden">
+      <h2 id="letterReportTitle">تقرير الحرف</h2>
+      <div id="letterReport"></div>
+    </div>
+    <div class="section">
+      <h2>الظواهر الصوتية المرتبطة بالمقاطع</h2>
+      <div id="phenomenaNotice" class="note"></div>
+      <div id="phenomenaGrid" class="phenomena-grid"></div>
+    </div>
+    <div id="phenomenonReportSection" class="section hidden">
+      <h2 id="phenomenonReportTitle">تقرير الظاهرة</h2>
+      <div id="phenomenonReport"></div>
+    </div>
+  </div>
+</div>
+<div id="exerciseModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal()">×«</button>
+    <div class="modal-title" id="modalTitle">تمارين</div>
+    <div class="modal-exercises" id="modalExercises"></div>
+  </div>
+</div>
+
+<!-- نقطة دخول المشرف: لا تظهر إلا عبر الرابط ?admin=1، ولا تمنح أي صلاحية بحد ذاتها؛
+     الحماية الفعلية تتم من جهة الخادم (RLS) عبر جدول admins في قاعدة البيانات -->
+<button id="adminEntry" class="hidden" onclick="openAdminPanel()">لوحة التحكم</button>
+
+<div id="adminPanel">
+  <div class="admin-wrap">
+    <div class="admin-topbar">
+      <h2>لوحة تحكم المشرف</h2>
+      <div>
+        <button class="ghost-btn" id="adminLogoutBtn" onclick="adminLogout()">تسجيل الخروج</button>
+        <button class="ghost-btn" onclick="closeAdminPanel()">إغلاق</button>
+      </div>
+    </div>
+
+    <div id="adminMsg"></div>
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="adminLoginCard" class="admin-card">
+      <h3>تسجيل دخول المشرف</h3>
+      <div class="admin-field"><label>البريد الإلكتروني</label><input type="email" id="adminEmail"></div>
+      <div class="admin-field"><label>كلمة المرور</label><input type="password" id="adminPassword"></div>
+      <button class="primary" onclick="adminLogin()">دخول</button>
+    </div>
+
+    <!-- لوحة الإدارة (تظهر فقط بعد تسجيل الدخول والتحقق من الصلاحية عبر الخادم) -->
+    <div id="adminDashboard" class="hidden">
+      <div class="tabbar">
+        <button id="tabBtn-units" class="active" onclick="switchAdminTab('units')">الحروف / الوحدات</button>
+        <button id="tabBtn-phenomena" onclick="switchAdminTab('phenomena')">الظواهر الصوتية</button>
+        <button id="tabBtn-map" onclick="switchAdminTab('map')">خريطة الحروف الأساسية</button>
+      </div>
+
+      <!-- تبويب الوحدات -->
+      <div id="tab-units" class="admin-tab">
+        <div class="admin-card">
+          <h3 id="unitFormTitle">إضافة وحدة/حرف جديد</h3>
+          <input type="hidden" id="unitEditingId">
+          <div class="admin-row">
+            <div class="admin-field"><label>المعرّف (id) — بالإنجليزية بدون مسافات، فريد</label><input type="text" id="unitId"></div>
+            <div class="admin-field"><label>العنوان المعروض</label><input type="text" id="unitTitle"></div>
+          </div>
+          <div class="admin-row">
+            <div class="admin-field"><label>درجة الصعوبة (0-100)</label><input type="number" id="unitScore" min="0" max="100"></div>
+            <div class="admin-field"><label>اللون / مستوى الصعوبة</label>
+              <select id="unitLevel"><option value="yellow">أصفر (صعوبة أقل)</option><option value="orange">برتقالي (صعوبة متوسطة)</option><option value="red">أحمر (صعوبة شديدة)</option></select>
+            </div>
+          </div>
+          <div class="admin-field"><label>الوصف</label><textarea id="unitErrors"></textarea></div>
+          <div class="admin-field"><label>السبب</label><textarea id="unitCauses"></textarea></div>
+          <div class="admin-field"><label>استراتيجية التصويب</label><textarea id="unitCorrection"></textarea></div><div class="admin-field"><label>تمرين الحرف (تمرين واحد)</label><textarea id="unitExercise"></textarea></div>
+          <button class="primary" onclick="saveUnit()">حفظ</button>
+          <button class="ghost-btn" onclick="resetUnitForm()">إلغاء التعديل</button>
+        </div>
+        <div class="admin-card">
+          <h3>الوحدات الحالية</h3>
+          <div id="unitsList"></div>
+        </div>
+      </div>
+
+      <!-- تبويب الظواهر -->
+      <div id="tab-phenomena" class="admin-tab hidden">
+        <div class="admin-card">
+          <h3 id="phenFormTitle">إضافة ظاهرة صوتية جديدة</h3>
+          <input type="hidden" id="phenEditingId">
+          <div class="admin-row">
+            <div class="admin-field"><label>المعرّف (id) — بالإنجليزية بدون مسافات، فريد</label><input type="text" id="phenId"></div>
+            <div class="admin-field"><label>العنوان المعروض</label><input type="text" id="phenTitle"></div>
+          </div>
+          <div class="admin-row">
+            <div class="admin-field"><label>درجة الصعوبة (0-100)</label><input type="number" id="phenScore" min="0" max="100"></div>
+            <div class="admin-field"><label>اللون / مستوى الصعوبة</label>
+              <select id="phenLevel"><option value="yellow">أصفر (صعوبة أقل)</option><option value="orange">برتقالي (صعوبة متوسطة)</option><option value="red">أحمر (صعوبة شديدة)</option></select>
+            </div>
+          </div>
+          <div class="admin-field"><label>الوصف</label><textarea id="phenDescription"></textarea></div>
+          <div class="admin-field"><label>السبب</label><textarea id="phenCause"></textarea></div>
+          <div class="admin-field"><label>الاستراتيجية العلاجية</label><textarea id="phenStrategy"></textarea></div>
+          <div class="admin-field">
+            <label>التمارين</label>
+            <textarea id="phenExercise" placeholder="اكتب نص التمرين هنا"></textarea>
+          </div>
+          <button class="primary" onclick="savePhenomenon()">حفظ</button>
+          <button class="ghost-btn" onclick="resetPhenForm()">إلغاء التعديل</button>
+        </div>
+        <div class="admin-card">
+          <h3>الظواهر الحالية</h3>
+          <div id="phenomenaList"></div>
+        </div>
+      </div>
+
+      <!-- تبويب خريطة الحروف -->
+      <div id="tab-map" class="admin-tab hidden">
+        <div class="admin-card">
+          <h3>ربط حرف أساسي بوحدة</h3>
+          <div class="admin-row">
+            <div class="admin-field"><label>الحرف</label><input type="text" id="mapLetter" maxlength="1"></div>
+            <div class="admin-field"><label>الوحدة المرتبطة</label><select id="mapUnitId"></select></div>
+          </div>
+          <button class="primary" onclick="saveLetterMap()">حفظ / تحديث</button>
+        </div>
+        <div class="admin-card">
+          <h3>الخريطة الحالية</h3>
+          <div id="mapList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   الاتصال بقاعدة البيانات المركزية (Supabase)
+   ضعي هنا SUPABASE_URL و SUPABASE_ANON_KEY الخاصين بمشروعك
+   (تجدينهما في: Supabase Dashboard > Project Settings > API).
+   مفتاح anon key ليس سرًّا وهو مصمّم للظهور في الواجهة الأمامية؛
+   الحماية الحقيقية تأتي من قواعد RLS في قاعدة البيانات (انظر ملف
+   schema_and_seed.sql ودليل الإعداد المرفقين).
+   ============================================================ */
+const SUPABASE_URL = "https://tdzqdquigiyhgibngtnp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkenFkcXVpZ2l5aGdpYm5ndG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjAzMjUsImV4cCI6MjEwNDQzNjMyNX0.BvpfT7bmk_l-3Upk9IkgYiXmGfbXmL1evvPDQ9lFhlM";
+const supa = (window.supabase && SUPABASE_URL.startsWith("http"))
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+/* ===== بيانات التقارير: تُحمَّل الآن من قاعدة البيانات المركزية بدل كتابتها هنا ===== */
+let unitData = {};
+let basicLetterKeys = {};
+let phenomenonData = {};
+let exerciseData = {};
+let appDataReady = false;
+
+async function loadAppData(){
+  document.getElementById("loadingNote").classList.remove("hidden");
+  document.getElementById("dataErrorNote").classList.add("hidden");
+  document.getElementById("analyzeBtn").disabled = true;
+  appDataReady = false;
+  try{
+    if(!supa) throw new Error("لم يتم ضبط الاتصال بقاعدة البيانات بعد.");
+    const [unitsRes, phenRes, mapRes] = await Promise.all([
+      supa.from("units").select("*"),
+      supa.from("phenomena").select("*"),
+      supa.from("letter_unit_map").select("*")
+    ]);
+    if(unitsRes.error) throw unitsRes.error;
+    if(phenRes.error) throw phenRes.error;
+    if(mapRes.error) throw mapRes.error;
+
+    const newUnitData = {};
+    unitsRes.data.forEach(row=>{
+      const u = {title: row.title, level: row.level, score: row.score, exercise: row.exercise || ""};
+      if(row.errors!=null) u.errors = row.errors;
+      if(row.causes!=null) u.causes = row.causes;
+      if(row.correction!=null) u.correction = row.correction;
+      newUnitData[row.id] = u;
+    });
+
+    const newPhenomenonData = {};
+    const newExerciseData = {};
+    phenRes.data.forEach(row=>{
+      newPhenomenonData[row.id] = {title: row.title, level: row.level, score: row.score, description: row.description, cause: row.cause, strategy: row.strategy, difficultyScore: row.score ?? null};
+      newExerciseData[row.id] = Array.isArray(row.exercises) ? row.exercises.filter(x=>x!=null).map(String).join("\n") : (row.exercises==null ? "" : String(row.exercises));
+    });
+
+    const newBasicLetterKeys = {};
+    mapRes.data.forEach(row=>{ newBasicLetterKeys[row.letter] = row.unit_id; });
+
+    unitData = newUnitData;
+    phenomenonData = newPhenomenonData;
+    exerciseData = newExerciseData;
+    basicLetterKeys = newBasicLetterKeys;
+    appDataReady = true;
+
+    document.getElementById("loadingNote").classList.add("hidden");
+    document.getElementById("dataErrorNote").classList.add("hidden");
+    document.getElementById("analyzeBtn").disabled = false;
+  }catch(err){
+    console.error("تعذّر تحميل بيانات النظام:", err);
+    document.getElementById("loadingNote").classList.add("hidden");
+    document.getElementById("dataErrorNote").classList.remove("hidden");
+  }
+}
+
+const shamsiyaLetters=["ت","ث","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ل","ن"];
+const qamariyaLetters=["ا","ب","ج","ح","خ","ع","غ","ف","ق","ك","م","ه","و","ي"];
+
+/* ===== أدوات التشكيل والتحليل ===== */
+const ARABIC_DIACRITICS=/[\u064B-\u065F\u0670\u06D6-\u06ED]/;
+const ARABIC_LETTER=/[\u0621-\u063A\u0641-\u064A\u0671-\u06D3]/;
+const FATHA="\u064E", DAMMA="\u064F", KASRA="\u0650", SHADDA="\u0651", SUKUN="\u0652";
+
+function isArabicLetter(ch){ return !!ch && ARABIC_LETTER.test(ch); }
+function isDiacritic(ch){ return !!ch && ARABIC_DIACRITICS.test(ch); }
+function isIgnorableFormat(ch){ return ch==="\u0640"; }
+
+function getWords(text){
+  const words=[];
+  const re=/[\u0621-\u063A\u0641-\u064A\u0671-\u06D3\u0640\u064B-\u065F\u0670\u06D6-\u06ED]+/g;
+  let m;
+  while((m=re.exec(text))) words.push({text:m[0],start:m.index,end:m.index+m[0].length});
+  return words;
+}
+function getWordAt(text,index){ return getWords(text).find(w=>index>=w.start&&index<w.end)||null; }
+
+function marksAfter(text,index){
+  let marks="";
+  for(let i=index+1;i<text.length&&isDiacritic(text[i]);i++) marks+=text[i];
+  return marks;
+}
+function previousBaseIndex(text,index){
+  for(let i=index-1;i>=0;i--){
+    if(isArabicLetter(text[i]) || text[i]==="ا" || text[i]==="ى") return i;
+  }
+  return -1;
+}
+function nextBaseIndex(text,index){
+  for(let i=index+1;i<text.length;i++){
+    if(isArabicLetter(text[i]) || text[i]==="ا" || text[i]==="ى") return i;
+  }
+  return -1;
+}
+function marksOnPrevious(text,index){
+  const p=previousBaseIndex(text,index);
+  return p>=0?marksAfter(text,p):"";
+}
+function wordWithoutMarks(word){ return word.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g,""); }
+
+/* ============================================================
+   محرك تصنيف حروف العلة (الواو / الياء): نظام سياقي ذكي متعدد
+   المراحل يعتمد على درجات ثقة داخلية، دون أن يغيّر هذا في الفئات
+   النهائية المعتمدة في الواجهة (واو / واو مد - ياء / ياء مد).
+
+   ترتيب المراحل (كل مرحلة تُحسم عندها القضية إن توفر دليلها):
+     المرحلة 1 — التشكيل الصريح (أولوية قصوى وثقة كاملة):
+        وجود حركة/سكون/تنوين على الحرف نفسه أو على الحرف السابق
+        يحسم التصنيف فورًا، ولا حاجة لأي تخمين بعده.
+     المرحلة 2 — التحليل المقطعي وبنية الكلمة عند غياب التشكيل:
+        موقع الحرف (أول الكلمة / وسطها / آخرها)، الحروف المحيطة،
+        وأنماط لاحقات شائعة (مثل ـون/ـين) تدل على نواة مقطع ممدود.
+     المرحلة 3 — قاعدة معجمية مساعدة صغيرة (فقط عند الحاجة):
+        تُستخدم لرفع الثقة في الحالات الوسطية أو الختامية الغامضة،
+        دون التعويل على قاموس ضخم.
+     المرحلة 4 — تعادل الأدلة: يُختار الخيار الأكثر أمانًا تربويًا
+        (الوظيفة الصامتة العادية) بدل الادعاء بمدّ غير مؤكد.
+   ============================================================ */
+/* آخر نص تم تحليله فعليًا؛ يُستخدم لاستخراج الكلمات المرتبطة بكل
+   ظاهرة ديناميكيًا من النص المعروض نفسه، دون أي قوائم كلمات ثابتة */
+let lastAnalyzedText="";
+
+const CONFIDENCE={EXPLICIT:100,STRONG_STRUCTURE:80,SUFFIX_PATTERN:75,LEXICON:65,WEAK:40,NONE:0};
+
+const commonWawMadd=new Set([
+ "نور","نورا","نورك","نورها","نورهم","فوق","قول","يقول","يقولون","تقول","تقولون","محمود","موسى","رسول","رسولك","رسولنا",
+ "يكون","تكون","كون","صوم","صورة","دور","سوق","حضور","وجود","وجوه","حدود","دخول","خروج","موجود","موسوم","مكتوب","مطلوب",
+ "طول","طريق"
+]);
+const commonYaMadd=new Set([
+ "في","لي","بي","هي","فيه","فيها","علي","عليه","عليها","كبير","كبيرة","كثير","كثيرة","جميل","جميلة","صغير","صغيرة",
+ "مدينة","مدينتي","حبيب","حبيبي","طبيب","طبيبي","نبي","دين","دينار","يوم","يومين","سنين","سنيننا","مريم","سعيد","سعيده"
+]);
+
+function explicitVowelBefore(text,index){
+  const marks=marksOnPrevious(text,index);
+  if(marks.includes(DAMMA)) return "damma";
+  if(marks.includes(KASRA)) return "kasra";
+  if(marks.includes(FATHA)) return "fatha";
+  return null;
+}
+
+/* الحركة/العلامة الصريحة الواقعة على الحرف (الواو أو الياء) نفسه */
+function ownExplicitMark(text,index){
+  const marks=marksAfter(text,index);
+  if(marks.includes(SHADDA)) return "shadda";
+  if(marks.includes(DAMMA)) return "damma";
+  if(marks.includes(KASRA)) return "kasra";
+  if(marks.includes(FATHA)) return "fatha";
+  if(marks.includes(SUKUN)) return "sukun";
+  return null;
+}
+
+/*
+  محرك موحّد لتصنيف الواو والياء، يُعيد الفئة النهائية مع مستوى ثقة
+  داخلي ورقم المرحلة التي حُسم عندها القرار (لأغراض المنطق الداخلي
+  فقط؛ لا يظهر شيء من هذا في الواجهة).
+    letterChar   : الحرف نفسه ("و" أو "ي")
+    maddKey      : فئة المدّ النهائية المعتمدة ("wawMadd" أو "yaMadd")
+    plainKey     : الفئة الصامتة العادية المعتمدة ("waw" أو "ya")
+    matchingVowel: الحركة التي تحسم المدّ عند سبقها للحرف ("damma"/"kasra")
+    lexiconSet   : القائمة المعجمية المساعدة الصغيرة
+    suffixLetter : الحرف اللاحق الذي يشكّل مع المدّ لاحقة شائعة ("ن" في ـون/ـين)
+*/
+function classifyGlideLetter(text,index,letterChar,maddKey,plainKey,matchingVowel,lexiconSet,suffixLetter){
+  /* المرحلة 1: التشكيل الصريح — أولوية قصوى */
+  const own=ownExplicitMark(text,index);
+  if(own==="shadda") return {key:plainKey,confidence:CONFIDENCE.EXPLICIT,stage:1};
+  if(own && own!=="sukun"){
+    /* الحرف نفسه يحمل حركة صريحة (ضمة/كسرة/فتحة) = وظيفة صامتة، وليس نواة مدّ */
+    return {key:plainKey,confidence:CONFIDENCE.EXPLICIT,stage:1};
+  }
+  const beforeVowel=explicitVowelBefore(text,index);
+  if(beforeVowel===matchingVowel) return {key:maddKey,confidence:CONFIDENCE.EXPLICIT,stage:1};
+  if(beforeVowel && beforeVowel!==matchingVowel){
+    /* حركة صريحة غير مطابقة قبل الحرف (فتحة قبل و/ي) = بنية ليّن صامتة، لا مدّ */
+    return {key:plainKey,confidence:CONFIDENCE.EXPLICIT,stage:1};
+  }
+
+  /* المرحلة 2: التحليل المقطعي وبنية الكلمة عند غياب التشكيل بالكامل */
+  const word=getWordAt(text,index);
+  if(!word) return {key:plainKey,confidence:CONFIDENCE.NONE,stage:2};
+  const w=wordWithoutMarks(word.text);
+  const pos=index-word.start;
+
+  /* بداية الكلمة: الغالب الأعم أن يكون الحرف صامتًا (بداية جذر، أو
+     حرف عطف واو/فاء ملتصق بالكلمة التالية) */
+  if(pos===0) return {key:plainKey,confidence:CONFIDENCE.STRONG_STRUCTURE,stage:2};
+
+  /* آخر الكلمة يسبق حرف "ن" مباشرة (أنماط لاحقات شائعة كـ ـون/ـين
+     في الجمع المذكر أو صيغ الفعل) — نواة مقطع ممدود شبه مؤكدة */
+  if(suffixLetter && pos===w.length-2 && w[pos+1]===suffixLetter){
+    return {key:maddKey,confidence:CONFIDENCE.SUFFIX_PATTERN,stage:2};
+  }
+
+  /* حرف وسطي بين حرفين صحيحين، أو حرف ختامي: لا قرينة بنيوية كافية
+     من غير تشكيل؛ نستعين بالقائمة المعجمية المساعدة فقط لرفع الثقة
+     في هذه الحالة الغامضة تحديدًا (مرحلة 3)، دون تعميم الحكم */
+  const isMedial=pos>0 && pos<w.length-1 && isArabicLetter(w[pos-1]) && isArabicLetter(w[pos+1]);
+  const isFinalAfterLetter=pos===w.length-1 && isArabicLetter(w[pos-1]);
+  if((isMedial || isFinalAfterLetter) && lexiconSet.has(w)){
+    return {key:maddKey,confidence:CONFIDENCE.LEXICON,stage:3};
+  }
+
+  /* المرحلة 4: تعادل الأدلة → الوظيفة الصامتة العادية (الخيار الأكثر أمانًا) */
+  return {key:plainKey,confidence:CONFIDENCE.WEAK,stage:4};
+}
+
+function classifyWaw(text,index){
+  return classifyGlideLetter(text,index,"و","wawMadd","waw","damma",commonWawMadd,"ن").key;
+}
+function classifyYa(text,index){
+  return classifyGlideLetter(text,index,"ي","yaMadd","ya","kasra",commonYaMadd,"ن").key;
+}
+
+function isHamzaChar(ch){ return ["ء","أ","إ","آ","ؤ","ئ"].includes(ch); }
+
+/*
+  ألف الوصل:
+  لا نعتبر كل ألف أول الكلمة ألف وصل.
+  نعرف (الـ) كحالة خاصة من ألف الوصل الكتابية، ثم نطبق قائمة مواضع
+  الوصل المعروفة، مع السماح للنص غير المشكول بالاستمرار دون إسقاط الألف.
+*/
+/* أسماء سماعية معروفة تبدأ بألف وصل، مع تصريفاتها الشائعة (تثنية/جمع) */
+const waslWords=new Set([
+ "اسم","اسماء","اسمان","اسمين",
+ "ابن","ابنة","ابنان","ابنين","ابنتان","ابنتين",
+ "امرؤ","امرأة","امرأتان","امرأتين",
+ "اثنان","اثنتان","اثنين","اثنتين",
+ "است"
+]);
+
+/* يفصل حرف العطف أو الجر الملتصق بأول الكلمة (و/ف/ب/ك/ل — نحو: وابن،
+   فاسم، بابن، كابن، لابن) عن جذع الكلمة، بحيث تُفحص مواضع ألف الوصل
+   على الجذع الحقيقي لا على الحرف الملحق به — تطبيقًا لبند "الحروف
+   السابقة". حرف واحد فقط يُفصل، ولا يُفصل الحرف إن كان هو الكلمة كلها
+   (شرط w.length>2 يمنع فصل حرف من كلمة من حرفين فقط) */
+function splitConjunctionPrefix(w){
+  if(w.length>2 && "وفبكل".includes(w[0])) return {prefix:w[0],core:w.slice(1),offset:1};
+  return {prefix:"",core:w,offset:0};
+}
+
+/* أوزان صرفية عامة (لا قوائم كلمات) يبدأ فيها الفعل الخماسي أو
+   السداسي — ومصدره وأمره على حد سواء — بألف وصل. تُفحص على جذع
+   الكلمة بعد فصل حرف العطف/الجر، وتُطبَّق على أي تصريف يحمل نفس
+   البادئة الصرفية دون التقيد بجذر بعينه: */
+const AUGMENTED_WASL_PATTERNS=[
+  /^است[\u0621-\u064A]{2,}/,   // سداسي: استفعل/استفعال (استخرج، استخدام...)
+  /^ا[\u0621-\u064A]ت[\u0621-\u064A]/, // خماسي: افتعل/افتعال (اجتمع، اقتراب...)
+  /^ان[\u0621-\u064A]{2,}/     // خماسي: انفعل/انفعال (انطلق، انتصار...)
+];
+
+function getAlifType(text,index){
+  const ch=text[index];
+  if(ch==="ى") return "maqsura";
+  if(isHamzaChar(ch)) return "hamza";
+  if(ch==="ٱ") return "wasl";
+  if(ch!=="ا") return null;
+
+  const word=getWordAt(text,index);
+  if(!word) return "maddAlif";
+  const raw=word.text;
+  const w=wordWithoutMarks(raw);
+  const pos=index-word.start;
+
+  const {core,offset}=splitConjunctionPrefix(w);
+  const corePos=pos-offset;
+
+  if(corePos===0){
+    /* ألف اللام التعريف (الـ): لا تُحسب إلا حين تكون الألف نفسها هي
+       أول حرف في جذع الكلمة ويليها لام مباشرة — وليس أي ألف يليها
+       لام في أي موضع من الكلمة (وهذا هو الخطأ الذي وقع سابقًا في
+       كلمات مثل "الطالب": الألف الثانية داخل الكلمة تسبق لامًا أيضًا،
+       لكنها ألف مد وليست ألف وصل) */
+    if(core[0]==="ا" && core[1]==="ل") return "wasl";
+
+    /* أسماء سماعية معروفة وتصريفاتها */
+    if(waslWords.has(core.toLowerCase())) return "wasl";
+
+    /* أوزان الفعل الخماسي والسداسي (فعلًا ومصدرًا وأمرًا) */
+    if(AUGMENTED_WASL_PATTERNS.some(re=>re.test(core))) return "wasl";
+
+    /* أمر الفعل الثلاثي: ألف الوصل + ثلاثة أحرف أصلية فقط (لا أكثر
+       ولا أقل) — وهذا هو الفارق البنيوي بين "اكتب" (وصل، 4 أحرف) و
+       "اجتماع" (خماسي، مضبوط أعلاه بالوزن) دون تشكيل ودون قائمة
+       ثابتة، اعتمادًا على طول جذع الكلمة فقط */
+    if(core.length===4) return "wasl";
+
+    /* ألف مجردة في أول الكلمة (أو أول جذعها بعد عطف/جر) لا تندرج
+       تحت أي من الحالات أعلاه فهي ألف مد، لا ألف وصل تلقائيًا */
+    return "maddAlif";
+  }
+
+  /* الألف بعد فتحة صريحة هي ألف مد */
+  if(marksOnPrevious(text,index).includes(FATHA)) return "maddAlif";
+
+  /* أي ألف أخرى داخل نص الكلمة (ليست في أول الجذع) هي ألف مد،
+     بصرف النظر عن الحرف الذي يليها — فوجود لام بعدها لا يجعلها
+     ألف وصل ما دامت ليست في موضع بداية الكلمة/الجذع */
+  return "maddAlif";
+}
+
+function classifyChar(text,index){
+  const ch=text[index];
+  if(isHamzaChar(ch)) return "hamza";
+  if(ch==="ى") return "maqsura";
+  if(ch==="ا" || ch==="ٱ"){
+    return getAlifType(text,index);
+  }
+  if(ch==="و") return classifyWaw(text,index);
+  if(ch==="ي") return classifyYa(text,index);
+  if(ch==="ة") return "taMarbuta";
+  if(basicLetterKeys[ch]) return basicLetterKeys[ch];
+  return null;
+}
+
+/* ============================================================
+   محرك استنتاج ظاهرتين جديدتين مرتبطتين بالمقاطع:
+     (1) قابلية الإقحام الحركي (تتابع صامت CC حقيقي أو مرجح)
+     (2) نون ساكنة متبوعة بفاء (نْ + ف)
+
+   المبدأ الحاكم لكلا الكشفين: "الدليل الصريح أولًا، ثم الاستنتاج
+   الصوتي السياقي عند غياب الدليل الصريح":
+     - إن وُجدت علامة السكون صراحة على الحرف الأول، فهذا دليل كامل
+       الثقة ويُحسم الأمر فورًا.
+     - إن وُجدت حركة صريحة (فتحة/ضمة/كسرة) على الحرف الأول، فهذا
+       دليل صريح على العكس (الحرف متحرك)، فتُستبعد البيئة فورًا.
+     - في غياب أي تشكيل، لا يُفترض السكون تلقائيًا لمجرد غياب
+       الحركة المكتوبة؛ بل يُستنتج احتمال السكون من موضع الحرف داخل
+       الكلمة ومن معرفة معجمية صغيرة ببعض الأنماط الشائعة.
+     - لا تُعرض أي من الظاهرتين إلا إذا بلغ مستوى الثقة الداخلي حدًا
+       كافيًا (SUFFIX_PATTERN فأعلى في سلّم الثقة المستخدم أصلًا في
+       محرك تصنيف الواو والياء)؛ وإلا لا يُعرض شيء البتة.
+   هذا المحرك مستقل تمامًا عن الكشف القديم لعلامة السكون النصية
+   (checkAlShamsiya/checkAlQamariya وبطاقة "السكون" القديمة التي
+   تعتمد على text.includes(SUKUN))، ولا يُستخدم ذلك المنطق القديم
+   كشرط لازم لأي من الظاهرتين الجديدتين.
+   ============================================================ */
+
+/* حساب رتبة الحرف (بالحروف فقط، دون التشكيل) داخل الكلمة، لتحديد
+   موضعه (أول/وسط/آخر) دون أن يتأثر العدّ بعلامات التشكيل السابقة له */
+function letterIndexInWord(text,index,word){
+  let count=0;
+  for(let i=word.start;i<index;i++){
+    const c=text[i];
+    if(isArabicLetter(c)||c==="ا"||c==="ى"||c==="ٱ"||isHamzaChar(c)) count++;
+  }
+  return count;
+}
+
+/* هل يعمل حرف العلة (ا/و/ي) في هذا الموضع بوصفه نواة مقطع (حرف مدّ)
+   أم بوصفه صامتًا (همزة صحيحة الحكم دائمًا صامتة)؟ يُبنى القرار على
+   المحرك القائم أصلًا لتصنيف الواو/الياء/الألف، دون تكرار منطقه */
+function isVowelNucleusLetter(text,index){
+  const ch=text[index];
+  if(ch==="ى") return true;
+  if(ch==="ا"||ch==="ٱ") return getAlifType(text,index)==="maddAlif";
+  if(ch==="و") return classifyWaw(text,index)==="wawMadd";
+  if(ch==="ي") return classifyYa(text,index)==="yaMadd";
+  return false;
+}
+
+/* قائمة معجمية صغيرة مساعدة لكلمات معروفة بتتابع صامت نهائي حقيقي
+   (بنية CVCC شائعة). هذه القائمة تمثّل "المعرفة اللغوية/المعجمية"
+   التي يُفترض أن يستند إليها الاستنتاج عند غياب التشكيل: فمجرد
+   تجاور حرفين صامتين في آخر كلمة غير مشكولة لا يكفي دليلًا بذاته،
+   لأن الكتابة العربية لا تُظهر الحركات القصيرة أصلًا سواء وُجدت أو
+   غابت (فكلمتا "بنت" بمعنى CVCC و"كتب" بمعنى CVCVC تُكتبان بنمط
+   حروف من الشكل نفسه). لذلك لا يُعتمد على قاعدة بنيوية عامة تلقائية
+   هنا، واقتصر الاستنتاج غير الصريح على هذه القائمة المعروفة فعلًا */
+const epenthesisLexicon=new Set([
+ "بنت","بنك","عقد","شمس","نفط","عصر","قصر","فجر","نهر","أرض","قلب","كلب","رأس","جسر","نجم","فكر","حزن","وقت",
+ "أخت","جزء","جسم","حكم","حلم","رعب","رزق","سجن","سطح","سقف","شرط","ظرف","فرض","فهم","قصد",
+ "قفل","كسب","لحم","نصف","هدف","وزن","وعد","ابن","اسم","صبر","صدر","عقل","قدر","بنتك","بنتي","بنته","بنتها"
+]);
+
+/* تقييم بيئة تتابع صامت CC بين حرفين متتاليين (c1 قبل c2) */
+function assessClusterEvidence(text,c1,word){
+  const own=ownExplicitMark(text,c1);
+  if(own==="sukun") return CONFIDENCE.EXPLICIT;
+  if(own && own!=="sukun") return CONFIDENCE.NONE; /* حركة صريحة تنفي التتابع الصامت هنا */
+
+  const w=wordWithoutMarks(word.text);
+  if(epenthesisLexicon.has(w)) return CONFIDENCE.STRONG_STRUCTURE;
+
+  /* دون تشكيل ودون معرفة معجمية مؤكدة: الثقة غير كافية لعرض
+     الظاهرة (تطبيقًا لبند "إذا كانت النتيجة غير مؤكدة، لا تُعرض") */
+  return CONFIDENCE.WEAK;
+}
+
+function findEpenthesisEnvironments(text){
+  const results=[];
+  for(const word of getWords(text)){
+    const letterIdxs=[];
+    for(let i=word.start;i<word.end;i++){
+      const ch=text[i];
+      if(isArabicLetter(ch)||ch==="ا"||ch==="ى"||ch==="ٱ"||isHamzaChar(ch)) letterIdxs.push(i);
+    }
+    for(let k=0;k<letterIdxs.length-1;k++){
+      const c1=letterIdxs[k], c2=letterIdxs[k+1];
+      if(isVowelNucleusLetter(text,c1) || isVowelNucleusLetter(text,c2)) continue;
+      const confidence=assessClusterEvidence(text,c1,word);
+      if(confidence>=CONFIDENCE.SUFFIX_PATTERN) results.push({word,c1,c2,confidence});
+    }
+  }
+  return results;
+}
+
+/* قائمتان معجميتان صغيرتان مساعدتان لظاهرة النون الساكنة + الفاء:
+   قائمة موجبة لكلمات معروفة بنون ساكنة فعلًا قبل الفاء، وقائمة
+   سلبية لكلمات يلتصق فيها الحرفان كتابيًا دون أن تكون النون ساكنة
+   (مثل نَفْس وتَنَفَّس، حيث السكون على حرف آخر أو غائب أصلًا) */
+/* كلمات معروفة فعلًا بنون ساكنة قبل الفاء (تُستخدم لرفع الثقة عند
+   غياب التشكيل). رُوعي استبعاد أي كلمة يكون فيها موضع النون قابلًا
+   لأكثر من قراءة شائعة (مثل "نفق"/"نفقة" حيث النون مفتوحة لا ساكنة،
+   أو "ينفذ" التي تحتمل صيغتين مختلفتين) لتفادي الادعاء بثقة زائفة */
+const nunFaPositiveLexicon=new Set([
+ "أنفاق","الأنفاق","إنفاق","الإنفاق","ينفق","تنفق","ننفق","أنفق","منفق","عنف","العنف","منفعة","المنفعة",
+ "تنفيذ","التنفيذ","منفصل","المنفصل","انفصال","الانفصال","الأنفس","أنفاس","أنفاسه",
+ "أنفسهم","أنفسنا","أنفسكم","منفرد","المنفرد","منفى","المنفى","عنفوان","ينفع","تنفع","ننفع","أنفعه"
+]);
+/* كلمات يتجاور فيها الحرفان كتابيًا (ن ثم ف) دون أن تكون النون
+   ساكنة في القراءة الشائعة (مثل نَفْس وتَنَفَّس، حيث السكون يقع على
+   حرف آخر غير النون، أو تنعدم بيئة النون الساكنة أصلًا) */
+const nunFaNegativeLexicon=new Set([
+ "نفس","النفس","نفسه","نفسها","نفسي","نفسك","تنفس","التنفس","يتنفس","تتنفس","نتنفس","أنفس","نفق",
+ "نفقة","النفقة","نفقات","نفقتها","نفقته"
+]);
+
+/* يزيل بادئة العطف (و/ف) ثم ألف اللام التعريف مرة واحدة، للوصول
+   إلى جذع الكلمة قبل فحص الأنماط الصرفية */
+function coreForMorphology(w){
+  let core=splitConjunctionPrefix(w).core;
+  if(core.length>2 && core[0]==="ا" && core[1]==="ل") core=core.slice(2);
+  return core;
+}
+
+/* نمط صرفي حتمي وموثوق (وليس تخمينًا): إذا بدأ جذع الكلمة بهمزة/ألف
+   ثم نون ثم فاء مباشرة (أ/إ/ا + ن + ف)، فهذا يطابق صيغتي "أَفْعَل"
+   (مثل أَنْفَقَ) أو "اِنْفَعَل" (مثل اِنْفَصَل)، وفي كلتا الصيغتين تكون
+   النون ساكنة بحكم وزن الصيغة نفسه بصرف النظر عن الجذر، لا بحكم
+   كلمة بعينها — لذا فهو دليل بنيوي موثوق يمكن الاعتماد عليه دون
+   الحاجة لمعرفة معجمية بالكلمة تحديدًا */
+function matchesAugmentedNunFaPattern(w){
+  const core=coreForMorphology(w);
+  if(core.length<3) return false;
+  const first=core[0];
+  const isHamzaOrAlif=first==="ا"||first==="أ"||first==="إ"||first==="آ"||first==="ء";
+  return isHamzaOrAlif && core[1]==="ن" && core[2]==="ف";
+}
+
+function assessNunSukunBeforeFa(text,nunIndex,fa){
+  const own=ownExplicitMark(text,nunIndex);
+  if(own==="sukun") return CONFIDENCE.EXPLICIT;
+  if(own && own!=="sukun") return CONFIDENCE.NONE; /* النون متحركة صراحة */
+
+  /* تضعيف الفاء صراحة يدل غالبًا على بنية مختلفة (كتفعّل)، لا على
+     تتابع نون ساكنة + فاء بسيط */
+  const faMarks=marksAfter(text,fa.faIndex);
+  if(faMarks.includes(SHADDA)) return CONFIDENCE.WEAK;
+
+  const w=wordWithoutMarks(fa.word.text);
+  if(nunFaNegativeLexicon.has(w)) return CONFIDENCE.NONE;
+  if(nunFaPositiveLexicon.has(w)) return CONFIDENCE.STRONG_STRUCTURE;
+
+  /* دون تشكيل ودون تطابق معجمي مباشر: نعتمد فقط على النمط الصرفي
+     الحتمي أعلاه؛ فمجرد تجاور ن ثم ف في أي موضع آخر غير كافٍ دليلًا
+     (لأن الحركات القصيرة غير المكتوبة تجعل القراءتين متماثلتين شكلًا) */
+  if(matchesAugmentedNunFaPattern(w)) return CONFIDENCE.STRONG_STRUCTURE;
+
+  return CONFIDENCE.WEAK;
+}
+
+function findNunFaEnvironments(text){
+  const results=[];
+  for(const word of getWords(text)){
+    for(let i=word.start;i<word.end;i++){
+      if(text[i]!=="ن") continue;
+      const faIndex=nextBaseIndex(text,i);
+      if(faIndex<0 || faIndex>=word.end) continue;
+      if(text[faIndex]!=="ف") continue;
+      const confidence=assessNunSukunBeforeFa(text,i,{word,faIndex});
+      if(confidence>=CONFIDENCE.SUFFIX_PATTERN) results.push({word,nunIndex:i,faIndex,confidence});
+    }
+  }
+  return results;
+}
+
+function dataForKey(key){
+  return unitData[key] || {title:key,level:"yellow",score:null,errors:"لا توجد بيانات تجريبية.",causes:"لا توجد بيانات.",correction:"لا توجد استراتيجية."};
+}
+
+/* ===== عرض الحروف دون إسقاط علامات التشكيل ===== */
+function buildDisplayTokens(text){
+  const tokens=[];
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(isDiacritic(ch) && tokens.length){
+      tokens[tokens.length-1].display+=ch;
+      tokens[tokens.length-1].end=i;
+      continue;
+    }
+    if(isIgnorableFormat(ch) && tokens.length){
+      tokens[tokens.length-1].display+=ch;
+      tokens[tokens.length-1].end=i;
+      continue;
+    }
+    if(/\s/.test(ch)){
+      tokens.push({type:"space",display:" ",index:i,end:i});
+      continue;
+    }
+    if(isArabicLetter(ch) || ch==="ى" || ch==="ا" || ch==="ٱ" || isHamzaChar(ch)){
+      tokens.push({type:"letter",display:ch,index:i,end:i});
+      continue;
+    }
+    /* علامات الترقيم ليست وحدة تقرير، لكنها لا تُسقط من شريط النص */
+    tokens.push({type:"other",display:ch,index:i,end:i});
+  }
+  return tokens;
+}
+
+function showUnitReport(key,display){
+  document.getElementById("phenomenonReportSection").classList.add("hidden");
+  const d=dataForKey(key);
+  const sec=document.getElementById("letterReportSection");
+  sec.classList.remove("hidden");
+  document.getElementById("letterReportTitle").textContent="تقرير حرف "+d.title+(display?" ( "+display+" )":"");
+  document.getElementById("letterReport").innerHTML=
+    '<div class="report-stack">'+
+    '<div class="report-card"><b>الوصف:</b><div>'+d.errors+'</div></div>'+
+    '<div class="report-card"><b>السبب:</b><div>'+d.causes+'</div></div>'+
+    '<div class="report-card"><b>استراتيجية التصويب:</b><div>'+d.correction+'</div></div>'+
+    '</div>'+
+    '<button type="button" class="primary generate-btn" onclick="openExerciseModal(\'unit\',\''+key+'\')">توليد التمارين</button>';
+  sec.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ============================================================
+   نظام تقييم صعوبة النص ككل (Text Difficulty Evaluation)
+   الدرجة الإجمالية تُحسب من مصدرين فقط، بمتوسط كل منهما:
+     (أ) متوسط صعوبة الحروف المصنفة (كما في السابق تمامًا).
+     (ب) متوسط الصعوبات المرتبطة بالمقاطع (بنية المقطع من حيث الوزن
+         الصوتي: مقطع خفيف مفتوح مقابل مقطع ثقيل مغلق/ممدود، وعدد
+         المقاطع في الكلمة)، دون إقحام أي عامل آخر غير مرتبط بالمقطع
+         (لا طول الكلمة بذاته، ولا تغطية التشكيل، ولا الوزن الصرفي).
+   ============================================================ */
+
+/* تقدير تقريبي لعدد المقاطع ووزنها (خفيف/ثقيل) لكلمة واحدة */
+function estimateWordSyllableProfile(wordToken){
+  const raw=wordToken.text;
+  const hasTashkil=ARABIC_DIACRITICS.test(raw);
+  const letters=[...wordWithoutMarks(raw)].filter(c=>isArabicLetter(c)||c==="ا"||c==="ى"||c==="ٱ"||isHamzaChar(c));
+  let totalSyllables=0, heavySyllables=0;
+
+  if(hasTashkil){
+    /* الحركات القصيرة الظاهرة تمثل نوى مقطعية، والسكون يدل على إغلاق
+       المقطع (زيادة ثقله)، وحروف المد تزيد ثقل المقطع كذلك */
+    for(const c of raw){
+      if(c===FATHA||c===DAMMA||c===KASRA) totalSyllables++;
+      if(c===SUKUN) heavySyllables++;
+    }
+    for(const c of raw){ if(c==="ا"||c==="ى") heavySyllables++; }
+    totalSyllables=Math.max(totalSyllables,1);
+  }else{
+    /* دون تشكيل: تقدير محافظ لعدد المقاطع من عدد الحروف الصحيحة،
+       مع افتراض نسبة معتدلة من المقاطع الثقيلة */
+    totalSyllables=Math.max(Math.ceil(letters.length/2),1);
+    heavySyllables=Math.round(totalSyllables*0.3);
+  }
+  return {totalSyllables,heavySyllables,hasTashkil};
+}
+
+/* متوسط الصعوبات المرتبطة بالمقاطع للنص ككل: لكل كلمة نحسب درجة
+   صعوبة مقطعية (وزن المقاطع الثقيلة + عدد المقاطع)، ثم نأخذ متوسط
+   هذه الدرجات على مستوى الكلمات كلها */
+function averageSyllableDifficulty(text){
+  const words=getWords(text).filter(w=>wordWithoutMarks(w.text).length>0);
+  if(!words.length) return 0;
+
+  const perWordScores=words.map(w=>{
+    const {totalSyllables,heavySyllables}=estimateWordSyllableProfile(w);
+    const heavyRatio=totalSyllables>0?heavySyllables/totalSyllables:0;
+    /* وزن المقطع (ثقيل/مغلق مقابل خفيف/مفتوح) هو المكوّن الأكبر،
+       وعدد المقاطع في الكلمة (طول السلسلة المقطعية) مكوّن إضافي
+       مرتبط بالمقطع كذلك (كثرة المقاطع تزيد تحدي الإنتاج المتصل) */
+    const syllableCountScore=Math.min(totalSyllables,6)/6*100;
+    return heavyRatio*100*0.6 + syllableCountScore*0.4;
+  });
+
+  const sum=perWordScores.reduce((a,b)=>a+b,0);
+  return Math.round(sum/perWordScores.length);
+}
+
+function analyzeSentence(){
+  if(!appDataReady){alert("لا تزال بيانات النظام قيد التحميل من قاعدة البيانات، حاول بعد لحظات.");return;}
+  const input=document.getElementById("sentence");
+  const text=input.value.trim();
+  if(!text){alert("من فضلك أدخل جملة عربية أولًا.");return;}
+
+  lastAnalyzedText=text;
+
+  const tokens=buildDisplayTokens(text);
+  const letterTokens=tokens.filter(t=>t.type==="letter" && classifyChar(text,t.index));
+  if(!letterTokens.length){alert("النص لا يحتوي على حروف عربية.");return;}
+
+  document.getElementById("results").classList.remove("hidden");
+  const lettersBox=document.getElementById("letters");
+  lettersBox.innerHTML="";
+
+  tokens.forEach(token=>{
+    if(token.type==="space"){
+      const space=document.createElement("span");
+      space.className="letter space";
+      space.textContent=" ";
+      lettersBox.appendChild(space);
+      return;
+    }
+    if(token.type!=="letter"){
+      const span=document.createElement("span");
+      span.className="letter space";
+      span.style.cursor="default";
+      span.textContent=token.display;
+      lettersBox.appendChild(span);
+      return;
+    }
+
+    const key=classifyChar(text,token.index);
+    const d=dataForKey(key);
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="letter "+d.level+"-border";
+    button.textContent=token.display;
+    button.title=d.title;
+    button.addEventListener("click",()=>showUnitReport(key,token.display));
+    lettersBox.appendChild(button);
+  });
+
+  const weightedElements=letterTokens.map(t=>({score:dataForKey(classifyChar(text,t.index)).score,frequency:1}));
+  getDetectedPhenomenaWithFrequency(text).forEach(item=>{
+    const score=phenomenonData[item.key]?.difficultyScore;
+    if(Number.isFinite(Number(score)) && item.frequency>0) weightedElements.push({score:Number(score),frequency:item.frequency});
+  });
+  const validElements=weightedElements.filter(item=>Number.isFinite(Number(item.score)) && item.frequency>0);
+  const totalFrequency=validElements.reduce((sum,item)=>sum+item.frequency,0);
+  const weightedSum=validElements.reduce((sum,item)=>sum+(Number(item.score)*item.frequency),0);
+  const score=totalFrequency ? Math.round(Math.max(0,Math.min(100,weightedSum/totalFrequency))) : null;
+  document.getElementById("score").textContent=score===null ? "—" : score+"%";
+  const fill=document.getElementById("fill");
+  fill.className="fill";
+  fill.style.width=(score===null?0:score)+"%";
+  if(score===null || score<=0){
+    fill.style.backgroundImage="none";
+  } else {
+    // شريط متدرّج من الأخضر (منخفض) إلى الأصفر إلى البرتقالي إلى الأحمر (مرتفع).
+    // التدرّج مرسوم بحجم يمثل طول الشريط بالكامل دائمًا (لا يتمدد مع الامتلاء)،
+    // فيبقى لون كل نقطة على الشريط ثابتًا بصرف النظر عن قيمة score الحالية.
+    fill.style.backgroundImage="linear-gradient(to right, #ef4444 0%, #f97316 33%, #facc15 66%, #22c55e 100%)";
+    fill.style.backgroundSize=(10000/score)+"% 100%";
+    fill.style.backgroundPosition="100% 0%";
+  }
+  document.getElementById("difficulty").textContent="";
+  document.getElementById("summary").textContent=score===null ? "لا توجد درجات صعوبة كافية في قاعدة البيانات لحساب النسبة." : "محسوبة من الحروف والظواهر المكتشفة، مع احتساب تكرار كل عنصر.";
+
+  renderPhenomena(text);
+
+  document.getElementById("letterReportSection").classList.add("hidden");
+  document.getElementById("letterReport").innerHTML="";
+  document.getElementById("phenomenonReportSection").classList.add("hidden");
+  document.getElementById("phenomenonReport").innerHTML="";
+}
+
+/* ===== الظواهر ===== */
+function checkAlShamsiya(text){
+  const words=getWords(text);
+  return words.some(w=>{
+    const clean=wordWithoutMarks(w.text);
+    return /^ال/.test(clean) && shamsiyaLetters.includes(clean[2]);
+  });
+}
+function checkAlQamariya(text){
+  const words=getWords(text);
+  return words.some(w=>{
+    const clean=wordWithoutMarks(w.text);
+    return /^ال/.test(clean) && qamariyaLetters.includes(clean[2]);
+  });
+}
+
+function getDetectedPhenomenaWithFrequency(text){
+  const detected=[];
+  const add=(key,frequency)=>{if(frequency>0) detected.push({key,frequency});};
+  /* نفس منطق العرض الحالي: هاتان الظاهرتان تعرضان دائمًا. */
+  add("shortVowelLength",1);
+  add("longVowelSwap",1);
+  add("shadda",[...text].filter(ch=>ch===SHADDA).length);
+  add("sukun",[...text].filter(ch=>ch===SUKUN).length);
+  add("alShamsiya",wordsMatchingAlShamsiya(text).length);
+  add("alQamariya",wordsMatchingAlQamariya(text).length);
+  add("vowelEpenthesis",findEpenthesisEnvironments(text).length);
+  add("nunSakinFa",findNunFaEnvironments(text).length);
+  return detected;
+}
+
+function renderPhenomena(text){
+  const grid=document.getElementById("phenomenaGrid");
+  const notice=document.getElementById("phenomenaNotice");
+  grid.innerHTML="";
+
+  /* دائمًا */
+  grid.appendChild(makePhenomenonCard("shortVowelLength","🟡 إطالة الحركات القصيرة"));
+  grid.appendChild(makePhenomenonCard("longVowelSwap","🟡 إبدال موضع الحركات الطويلة"));
+
+  /* عند وجودها فقط */
+  if(text.includes(SHADDA)) grid.appendChild(makePhenomenonCard("shadda","🔴 الشدة"));
+  if(text.includes(SUKUN)) grid.appendChild(makePhenomenonCard("sukun","🟠 السكون"));
+  if(checkAlShamsiya(text)) grid.appendChild(makePhenomenonCard("alShamsiya","🟡 اللام الشمسية"));
+  if(checkAlQamariya(text)) grid.appendChild(makePhenomenonCard("alQamariya","🟡 اللام القمرية"));
+
+  /* ظاهرتان جديدتان مستقلتان عن منطق السكون القديم: تُعرضان فقط إذا
+     توصل التحليل الصوتي (صريح أو مستنتج من السياق) إلى بيئة فعلية،
+     سواء كان النص مشكولًا أو غير مشكول */
+  if(findEpenthesisEnvironments(text).length) grid.appendChild(makePhenomenonCard("vowelEpenthesis","🟠 قابلية للإقحام الحركي"));
+  if(findNunFaEnvironments(text).length) grid.appendChild(makePhenomenonCard("nunSakinFa","🟡 نون ساكنة متبوعة بفاء"));
+
+  notice.textContent="";
+}
+
+function makePhenomenonCard(key,title){
+  const card=document.createElement("div");
+  card.className="phenomenon "+((key==="sukun"||key==="vowelEpenthesis")?"orange-card":(key==="shadda"?"red-card":""));
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.className="details-btn";
+  btn.textContent="فتح التقرير";
+  btn.onclick=()=>showPhenomenonReport(key);
+  card.innerHTML='<div class="phenomenon-title">'+title+'</div>';
+  card.appendChild(btn);
+  return card;
+}
+
+/* ============================================================
+   استخراج الكلمات المرتبطة بكل ظاهرة، ديناميكيًا من النص المعروض
+   نفسه (لا قوائم كلمات ثابتة). لكل ظاهرة قاعدة اكتشاف خاصة بها،
+   تُعاد استخدام نفس منطق الكشف المستخدم أصلًا في بطاقة الظاهرة
+   (الشمسية/القمرية) أو في محرك الإقحام الحركي والنون الساكنة، بدل
+   تكراره أو تخمين كلمات عشوائيًا.
+   ============================================================ */
+function wordsMatchingAlShamsiya(text){
+  return getWords(text).filter(w=>{
+    const clean=wordWithoutMarks(w.text);
+    return /^ال/.test(clean) && shamsiyaLetters.includes(clean[2]);
+  }).map(w=>w.text);
+}
+function wordsMatchingAlQamariya(text){
+  return getWords(text).filter(w=>{
+    const clean=wordWithoutMarks(w.text);
+    return /^ال/.test(clean) && qamariyaLetters.includes(clean[2]);
+  }).map(w=>w.text);
+}
+function wordsMatchingShadda(text){
+  return getWords(text).filter(w=>w.text.includes(SHADDA)).map(w=>w.text);
+}
+function wordsMatchingSukun(text){
+  return getWords(text).filter(w=>w.text.includes(SUKUN)).map(w=>w.text);
+}
+/* إبدال موضع الحركات الطويلة: كلمات تحتوي على حرف مد فعلي واحد
+   على الأقل (ألف/واو/ياء مد أو ألف مقصورة)، باستخدام محرك التصنيف
+   السياقي نفسه المعتمد أصلًا في تحليل الحروف، لا تخمينًا نصيًا */
+function wordsMatchingLongVowelSwap(text){
+  const result=[];
+  for(const w of getWords(text)){
+    let hasMudd=false;
+    for(let i=w.start;i<w.end;i++){
+      const ch=text[i];
+      if((ch==="ا"||ch==="ٱ"||ch==="ى"||ch==="و"||ch==="ي") && isVowelNucleusLetter(text,i)){hasMudd=true;break;}
+    }
+    if(hasMudd) result.push(w.text);
+  }
+  return result;
+}
+/* إطالة الحركات القصيرة: كلمات تحمل حركة قصيرة صريحة واحدة على
+   الأقل (فتحة/ضمة/كسرة) في النص المعروض */
+function wordsMatchingShortVowelLength(text){
+  return getWords(text).filter(w=>/[\u064E\u064F\u0650]/.test(w.text)).map(w=>w.text);
+}
+function wordsMatchingEpenthesis(text){
+  return findEpenthesisEnvironments(text).map(h=>h.word.text);
+}
+function wordsMatchingNunFa(text){
+  return findNunFaEnvironments(text).map(h=>h.word.text);
+}
+
+const phenomenonWordFinders={
+  alShamsiya:wordsMatchingAlShamsiya,
+  alQamariya:wordsMatchingAlQamariya,
+  shadda:wordsMatchingShadda,
+  sukun:wordsMatchingSukun,
+  longVowelSwap:wordsMatchingLongVowelSwap,
+  shortVowelLength:wordsMatchingShortVowelLength,
+  vowelEpenthesis:wordsMatchingEpenthesis,
+  nunSakinFa:wordsMatchingNunFa
+};
+
+/* يعيد الكلمات المرتبطة بظاهرة معينة من نص معين، بلا تكرار ومع
+   الحفاظ على ترتيب ظهورها في النص */
+function getPhenomenonWords(key,text){
+  const finder=phenomenonWordFinders[key];
+  const words=finder?finder(text):[];
+  const seen=new Set();
+  const unique=[];
+  for(const w of words){
+    if(!seen.has(w)){ seen.add(w); unique.push(w); }
+  }
+  return unique;
+}
+
+function showPhenomenonReport(key){
+  document.getElementById("letterReportSection").classList.add("hidden");
+  const d=phenomenonData[key];
+  const sec=document.getElementById("phenomenonReportSection");
+  sec.classList.remove("hidden");
+  document.getElementById("phenomenonReportTitle").textContent="تقرير الظاهرة: "+d.title;
+
+  const matchedWords=getPhenomenonWords(key,lastAnalyzedText);
+  const wordsLine=matchedWords.length
+    ? '<div class="phenomenon-words">'+matchedWords.join('، ')+'</div>'
+    : '<div class="phenomenon-words">لا توجد كلمات محددة لهذه الظاهرة في النص الحالي.</div>';
+
+  document.getElementById("phenomenonReport").innerHTML=
+    wordsLine+
+    '<div class="report-stack">'+
+    '<div class="report-card"><b>الوصف:</b><div>'+d.description+'</div></div>'+
+    '<div class="report-card"><b>السبب:</b><div>'+d.cause+'</div></div>'+
+    '<div class="report-card"><b>استراتيجية التصويب:</b><div>'+d.strategy+'</div></div>'+
+    '</div>'+
+    '<button type="button" class="primary generate-btn" onclick="openExerciseModal(\'phenomenon\',\''+key+'\')">توليد التمارين</button>';
+  sec.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ===== التمارين والنافذة المنبثقة: محفوظة الوظيفة ===== */
+function openExerciseModal(type,key){
+  const modal=document.getElementById("exerciseModal");
+  const title=document.getElementById("modalTitle");
+  const exercises=document.getElementById("modalExercises");
+  let text="";
+  if(type==="unit"){
+    const d=dataForKey(key); title.textContent="تمرين "+d.title;
+    text=d.exercise||"لا يوجد تمرين مسجل لهذا الحرف بعد.";
+  }else{
+    title.textContent="تمرين "+phenomenonData[key].title;
+    text=exerciseData[key]||"لا يوجد تمرين مسجل لهذه الظاهرة بعد.";
+  }
+  exercises.innerHTML="<div class=\"report-card\">"+text.replace(/\n/g,"<br>")+"</div>";
+  modal.classList.add("active");
+  document.addEventListener("keydown",handleEscapeKey);
+}
+function closeModal(){
+  document.getElementById("exerciseModal").classList.remove("active");
+  document.removeEventListener("keydown",handleEscapeKey);
+}
+function closeModalOnOverlay(event){
+  if(event.target===document.getElementById("exerciseModal")) closeModal();
+}
+function handleEscapeKey(event){
+  if(event.key==="Escape") closeModal();
+}
+
+/* ===== اختبار داخلي سريع يمكن تشغيله من Console ===== */
+function runClassificationTests(){
+  const tests=[
+    ["أ","hamza"],["إ","hamza"],["ؤ","hamza"],["ئ","hamza"],["ء","hamza"],["آ","hamza"],
+    ["ٱبن","wasl"],["البيت","wasl"],["باب","maddAlif"],["هدى","maqsura"],
+    ["مُور","wawMadd"],["نور","wawMadd"],["وَلَد","waw"],
+    ["بِير","yaMadd"],["في","yaMadd"],["يَد","ya"],["بَيْت","ya"],
+    ["ت","ta"],["ة","taMarbuta"],["ه","haLetter"]
+  ];
+  return tests.map(([sample,expected])=>{
+    const idx=[...sample].findIndex(ch=>ch==="و"||ch==="ي"||ch==="ا"||ch==="ٱ"||isHamzaChar(ch)||ch==="ى"||basicLetterKeys[ch]);
+    const got=idx>=0?classifyChar(sample,idx):null;
+    return {sample,expected,got,pass:got===expected};
+  });
+}
+
+/* ============================================================
+   لوحة تحكم المشرف (Admin Dashboard)
+   - لا تظهر إلا عبر الرابط ?admin=1 (مجرد إخفاء بصري لا يمنح صلاحية).
+   - الحماية الفعلية للكتابة تتم من جهة الخادم عبر RLS في Supabase:
+     أي مستخدم غير موجود في جدول admins لا يستطيع الإضافة/التعديل/
+     الحذف مهما فعل من DevTools أو نداءات API مباشرة.
+   ============================================================ */
+function checkAdminUrlFlag(){
+  const params=new URLSearchParams(location.search);
+  if(params.get("admin")==="1"){
+    document.getElementById("adminEntry").classList.remove("hidden");
+  }
+}
+
+function showAdminMsg(text,type){
+  const el=document.getElementById("adminMsg");
+  el.innerHTML='<div class="admin-msg '+(type==="ok"?"ok":"err")+'">'+text+'</div>';
+  clearTimeout(showAdminMsg._t);
+  showAdminMsg._t=setTimeout(()=>{el.innerHTML="";},5000);
+}
+
+async function openAdminPanel(){
+  document.getElementById("adminPanel").classList.add("active");
+  if(!supa){
+    showAdminMsg("لم يتم ضبط الاتصال بقاعدة البيانات بعد. عدّلي SUPABASE_URL و SUPABASE_ANON_KEY في أعلى الكود.","err");
+    return;
+  }
+  const {data:{session}}=await supa.auth.getSession();
+  if(session){ await afterAdminLogin(); }
+  else{
+    document.getElementById("adminLoginCard").classList.remove("hidden");
+    document.getElementById("adminDashboard").classList.add("hidden");
+  }
+}
+function closeAdminPanel(){
+  document.getElementById("adminPanel").classList.remove("active");
+}
+
+async function adminLogin(){
+  if(!supa){showAdminMsg("لم يتم ضبط الاتصال بقاعدة البيانات بعد.","err");return;}
+  const email=document.getElementById("adminEmail").value.trim();
+  const password=document.getElementById("adminPassword").value;
+  const {error}=await supa.auth.signInWithPassword({email,password});
+  if(error){showAdminMsg("فشل تسجيل الدخول: "+error.message,"err");return;}
+  await afterAdminLogin();
+}
+
+async function afterAdminLogin(){
+  /* التحقق من صلاحية Admin يتم عبر دالة في قاعدة البيانات (RPC) تفحص
+     جدول admins من جهة الخادم — وليس عبر أي شرط في هذا الكود */
+  const {data,error}=await supa.rpc("am_i_admin");
+  if(error || data!==true){
+    showAdminMsg("هذا الحساب غير مصرّح له بصلاحيات الإدارة.","err");
+    await supa.auth.signOut();
+    document.getElementById("adminLoginCard").classList.remove("hidden");
+    document.getElementById("adminDashboard").classList.add("hidden");
+    return;
+  }
+  document.getElementById("adminLoginCard").classList.add("hidden");
+  document.getElementById("adminDashboard").classList.remove("hidden");
+  showAdminMsg("تم تسجيل الدخول بنجاح.","ok");
+  await refreshAdminData();
+}
+
+async function adminLogout(){
+  if(supa) await supa.auth.signOut();
+  document.getElementById("adminLoginCard").classList.remove("hidden");
+  document.getElementById("adminDashboard").classList.add("hidden");
+  document.getElementById("adminEmail").value="";
+  document.getElementById("adminPassword").value="";
+}
+
+function switchAdminTab(name){
+  ["units","phenomena","map"].forEach(n=>{
+    document.getElementById("tab-"+n).classList.toggle("hidden", n!==name);
+    document.getElementById("tabBtn-"+n).classList.toggle("active", n===name);
+  });
+}
+
+async function refreshAdminData(){
+  await loadAppData();
+  renderUnitsList();
+  renderPhenomenaList();
+  populateUnitSelect();
+  renderMapList();
+}
+
+/* ---------- الوحدات / الحروف ---------- */
+function renderUnitsList(){
+  const box=document.getElementById("unitsList");
+  const ids=Object.keys(unitData).sort();
+  box.innerHTML=ids.map(id=>{
+    const u=unitData[id];
+    return '<div class="admin-list-item"><div><b>'+u.title+'</b>'+
+      '<div class="meta">id: '+id+' — الصعوبة: '+u.score+' — المستوى: '+u.level+'</div></div>'+
+      '<div class="actions">'+
+      '<button type="button" class="ghost-btn" onclick="editUnit(\''+id+'\')">تعديل</button>'+
+      '<button type="button" class="danger-btn" onclick="deleteUnit(\''+id+'\')">حذف</button>'+
+      '</div></div>';
+  }).join("") || "<div class='note'>لا توجد بيانات بعد.</div>";
+}
+function editUnit(id){
+  const u=unitData[id];
+  if(!u)return;
+  document.getElementById("unitFormTitle").textContent="تعديل: "+u.title;
+  document.getElementById("unitEditingId").value=id;
+  document.getElementById("unitId").value=id;
+  document.getElementById("unitTitle").value=u.title||"";
+  document.getElementById("unitLevel").value=u.level||"yellow";
+  document.getElementById("unitScore").value=u.score!=null?u.score:"";
+  document.getElementById("unitErrors").value=u.errors||"";
+  document.getElementById("unitCauses").value=u.causes||"";
+  document.getElementById("unitCorrection").value=u.correction||"";
+  document.getElementById("unitExercise").value=u.exercise||"";
+  document.getElementById("unitFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function resetUnitForm(){
+  document.getElementById("unitFormTitle").textContent="إضافة وحدة/حرف جديد";
+  document.getElementById("unitEditingId").value="";
+  document.getElementById("unitId").value="";
+  document.getElementById("unitTitle").value="";
+  document.getElementById("unitLevel").value="yellow";
+  document.getElementById("unitScore").value="";
+  document.getElementById("unitErrors").value="";
+  document.getElementById("unitCauses").value="";
+  document.getElementById("unitCorrection").value="";
+  document.getElementById("unitExercise").value="";
+}
+async function saveUnit(){
+  const id=document.getElementById("unitId").value.trim();
+  const editingId=document.getElementById("unitEditingId").value;
+  const title=document.getElementById("unitTitle").value.trim();
+  if(!id||!title){showAdminMsg("المعرّف والعنوان مطلوبان.","err");return;}
+  const payload={
+    id,
+    title,
+    level:document.getElementById("unitLevel").value,
+    score:Number(document.getElementById("unitScore").value)||0,
+    errors:document.getElementById("unitErrors").value.trim()||null,
+    causes:document.getElementById("unitCauses").value.trim()||null,
+    correction:document.getElementById("unitCorrection").value.trim()||null, exercise:document.getElementById("unitExercise").value.trim()||null
+  };
+  let error;
+  if(editingId && editingId!==id){
+    ({error}=await supa.from("units").delete().eq("id",editingId));
+    if(error){showAdminMsg("فشل الحفظ: "+error.message,"err");return;}
+  }
+  ({error}=await supa.from("units").upsert(payload));
+  if(error){showAdminMsg("فشل الحفظ: "+error.message,"err");return;}
+  showAdminMsg("تم حفظ الوحدة بنجاح.","ok");
+  resetUnitForm();
+  await refreshAdminData();
+}
+async function deleteUnit(id){
+  if(!confirm("هل تريدين حذف هذه الوحدة نهائيًا؟"))return;
+  const {error}=await supa.from("units").delete().eq("id",id);
+  if(error){showAdminMsg("فشل الحذف: "+error.message,"err");return;}
+  showAdminMsg("تم الحذف.","ok");
+  await refreshAdminData();
+}
+
+/* ---------- الظواهر الصوتية ---------- */
+function renderPhenomenaList(){
+  const box=document.getElementById("phenomenaList");
+  const ids=Object.keys(phenomenonData).sort();
+  box.innerHTML=ids.map(id=>{
+    const p=phenomenonData[id];
+    return '<div class="admin-list-item"><div><b>'+p.title+'</b>'+
+      '<div class="meta">id: '+id+' — الصعوبة: '+p.score+' — المستوى: '+p.level+'</div></div>'+
+      '<div class="actions">'+
+      '<button type="button" class="ghost-btn" onclick="editPhenomenon(\''+id+'\')">تعديل</button>'+
+      '<button type="button" class="danger-btn" onclick="deletePhenomenon(\''+id+'\')">حذف</button>'+
+      '</div></div>';
+  }).join("") || "<div class='note'>لا توجد بيانات بعد.</div>";
+}
+function editPhenomenon(id){
+  const p=phenomenonData[id]; if(!p)return;
+  document.getElementById("phenFormTitle").textContent="تعديل: "+p.title;
+  document.getElementById("phenEditingId").value=id;
+  document.getElementById("phenId").value=id;
+  document.getElementById("phenTitle").value=p.title||"";
+  document.getElementById("phenLevel").value=p.level||"yellow";
+  document.getElementById("phenScore").value=p.score!=null?p.score:"";
+  document.getElementById("phenDescription").value=p.description||"";
+  document.getElementById("phenCause").value=p.cause||"";
+  document.getElementById("phenStrategy").value=p.strategy||"";
+  document.getElementById("phenExercise").value=exerciseData[id]||"";
+  document.getElementById("phenFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function resetPhenForm(){
+  document.getElementById("phenFormTitle").textContent="إضافة ظاهرة صوتية جديدة";
+  document.getElementById("phenEditingId").value="";
+  document.getElementById("phenId").value="";
+  document.getElementById("phenTitle").value="";
+  document.getElementById("phenLevel").value="yellow";
+  document.getElementById("phenScore").value="";
+  document.getElementById("phenDescription").value="";
+  document.getElementById("phenCause").value="";
+  document.getElementById("phenStrategy").value="";
+  document.getElementById("phenExercise").value="";
+}
+async function savePhenomenon(){
+  const id=document.getElementById("phenId").value.trim();
+  const editingId=document.getElementById("phenEditingId").value;
+  const title=document.getElementById("phenTitle").value.trim();
+  if(!id||!title){showAdminMsg("المعرّف والعنوان مطلوبان.","err");return;}
+  const payload={
+    id,
+    title,
+    level:document.getElementById("phenLevel").value,
+    score:Number(document.getElementById("phenScore").value)||0,
+    description:document.getElementById("phenDescription").value.trim()||null,
+    cause:document.getElementById("phenCause").value.trim()||null,
+    strategy:document.getElementById("phenStrategy").value.trim()||null,
+    exercises:document.getElementById("phenExercise").value.trim()||null
+  };
+  let error;
+  if(editingId && editingId!==id){
+    ({error}=await supa.from("phenomena").delete().eq("id",editingId));
+    if(error){showAdminMsg("فشل الحفظ: "+error.message,"err");return;}
+  }
+  ({error}=await supa.from("phenomena").upsert(payload));
+  if(error){showAdminMsg("فشل الحفظ: "+error.message,"err");return;}
+  showAdminMsg("تم حفظ الظاهرة بنجاح.","ok");
+  resetPhenForm();
+  await refreshAdminData();
+}
+async function deletePhenomenon(id){
+  if(!confirm("هل تريدين حذف هذه الظاهرة نهائيًا؟"))return;
+  const {error}=await supa.from("phenomena").delete().eq("id",id);
+  if(error){showAdminMsg("فشل الحذف: "+error.message,"err");return;}
+  showAdminMsg("تم الحذف.","ok");
+  await refreshAdminData();
+}
+
+/* ---------- خريطة الحروف الأساسية ---------- */
+function populateUnitSelect(){
+  const sel=document.getElementById("mapUnitId");
+  const current=sel.value;
+  const ids=Object.keys(unitData).sort();
+  sel.innerHTML=ids.map(id=>'<option value="'+id+'">'+unitData[id].title+' ('+id+')</option>').join("");
+  if(ids.includes(current)) sel.value=current;
+}
+function renderMapList(){
+  const box=document.getElementById("mapList");
+  const letters=Object.keys(basicLetterKeys).sort();
+  box.innerHTML=letters.map(letter=>{
+    const unitId=basicLetterKeys[letter];
+    const title=unitData[unitId]?unitData[unitId].title:unitId;
+    return '<div class="admin-list-item"><div><b>'+letter+'</b>'+
+      '<div class="meta">مرتبط بـ: '+title+' ('+unitId+')</div></div>'+
+      '<div class="actions">'+
+      '<button type="button" class="ghost-btn" onclick="editLetterMap(\''+letter+'\')">تعديل</button>'+
+      '<button type="button" class="danger-btn" onclick="deleteLetterMap(\''+letter+'\')">حذف</button>'+
+      '</div></div>';
+  }).join("") || "<div class='note'>لا توجد بيانات بعد.</div>";
+}
+function editLetterMap(letter){
+  document.getElementById("mapLetter").value=letter;
+  document.getElementById("mapUnitId").value=basicLetterKeys[letter];
+}
+async function saveLetterMap(){
+  const letter=document.getElementById("mapLetter").value.trim();
+  const unitId=document.getElementById("mapUnitId").value;
+  if(!letter||!unitId){showAdminMsg("الحرف والوحدة المرتبطة مطلوبان.","err");return;}
+  const {error}=await supa.from("letter_unit_map").upsert({letter,unit_id:unitId});
+  if(error){showAdminMsg("فشل الحفظ: "+error.message,"err");return;}
+  showAdminMsg("تم الحفظ.","ok");
+  document.getElementById("mapLetter").value="";
+  await refreshAdminData();
+}
+async function deleteLetterMap(letter){
+  if(!confirm("هل تريدين حذف هذا الربط؟"))return;
+  const {error}=await supa.from("letter_unit_map").delete().eq("letter",letter);
+  if(error){showAdminMsg("فشل الحذف: "+error.message,"err");return;}
+  showAdminMsg("تم الحذف.","ok");
+  await refreshAdminData();
+}
+
+/* ===== نقطة الانطلاق ===== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  checkAdminUrlFlag();
+  loadAppData();
+});
+</script>
+</body>
+</html>
